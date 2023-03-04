@@ -3,7 +3,6 @@ import shutil
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-from django.http import FileResponse
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
