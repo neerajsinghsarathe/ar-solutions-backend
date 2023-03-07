@@ -27,16 +27,18 @@ class FileUploadView(APIView):
             file_obj = request.FILES['file']
             file_type = request.data['type']
             db_name = request.data['database']
-            target = request.data['target']
+            target_name = request.data['target']
 
-            if db_name and target:
+            if db_name and target_name:
                 if Database.objects.filter(name=db_name).exists():
-                    if Target.objects.filter(name=target, database=Database.objects.get(name=db_name)).exists():
-                        if not File.objects.filter(target=Target.objects.get(name=target), type=file_type).exists():
-                            fs = CustomFileSystemStorage(db_name, target)
+                    if Target.objects.filter(name=target_name, database=Database.objects.get(name=db_name)).exists():
+                        if not File.objects.filter(database=Database.objects.get(name=db_name),
+                                                   target=Target.objects.get(name=target_name,database=Database.objects.get(name=db_name)), type=file_type).exists():
+                            fs = CustomFileSystemStorage(db_name, target_name)
                             filename = fs.save(file_obj.name, file_obj)
                             file_url = db_name + '/' + fs.url(filename)
-                            File.objects.create(name=filename, type=file_type, target=Target.objects.get(name=target),
+                            File.objects.create(name=filename, type=file_type,
+                                                target=Target.objects.get(name=target_name),
                                                 database=Database.objects.get(name=db_name), file=file_url)
                             return Response({'message': 'File Uploaded'}, status=status.HTTP_201_CREATED)
                         return Response({'message': file_type + ' File Already Exists'}, status=status.HTTP_201_CREATED)
@@ -55,7 +57,9 @@ class AddDatabase(APIView):
             checkDB = Database.objects.filter(name=name).exists()
             if not checkDB:
                 Database.objects.create(name=name)
-                return Response({'message': 'Database  Created'}, status=status.HTTP_201_CREATED)
+                return Response(
+                    {'message': 'Database  Created', 'details': Database.objects.filter(name=name).values()},
+                    status=status.HTTP_201_CREATED)
             return Response({'error': 'Database Already Exists'}, status=status.HTTP_409_CONFLICT)
         return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -64,20 +68,39 @@ class AddTarget(APIView):
     @staticmethod
     def post(request):
         if request.method == 'POST':
-            db_name = request.data['database']
-            checkDB = Database.objects.filter(name=db_name).exists()
+            id = request.data['database']
+            checkDB = Database.objects.filter(id=id).exists()
             if checkDB:
                 target_name = request.data['name']
-                checkTarget = Target.objects.filter(name=target_name).exists()
+                checkTarget = Target.objects.filter(name=target_name,
+                                                    database=Database.objects.get(id=id)).exists()
                 if not checkTarget:
-                    Target.objects.create(name=target_name, database=Database.objects.get(name=db_name))
-                    db = Database.objects.get(name=db_name)
-                    db.target_count = Target.objects.filter(database=Database.objects.get(name=db_name)).count()
+                    Target.objects.create(name=target_name, database=Database.objects.get(id=id))
+                    db = Database.objects.get(id=id)
+                    db.target_count = Target.objects.filter(database=Database.objects.get(id=id)).count()
                     db.save()
-                    return Response({'message': 'Target Created'}, status=status.HTTP_201_CREATED)
+                    return Response(
+                        {'message': 'Target Created', 'details': Target.objects.filter(name=target_name).values()},
+                        status=status.HTTP_201_CREATED)
                 return Response({'error': 'Target already exists'}, status=status.HTTP_409_CONFLICT)
             return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
         return Response('bad request', status=status.HTTP_400_BAD_REQUEST)
+
+
+class RemoveDatabase(APIView):
+    @staticmethod
+    def post(request):
+        if request.method == 'POST':
+            db_name = request.data['name']
+            checkDB = Database.objects.filter(name=db_name).exists()
+            if checkDB:
+                Database.objects.filter(name=db_name).delete()
+                path = settings.MEDIA_ROOT + '/' + request.data['name']
+                if os.path.exists(path):
+                    shutil.rmtree(path)
+                return Response({'message': 'Database Deleted'}, status=status.HTTP_200_OK)
+            return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RemoveTarget(APIView):
@@ -88,34 +111,19 @@ class RemoveTarget(APIView):
             checkDB = Database.objects.filter(name=db_name).exists()
             if checkDB:
                 target_name = request.data['name']
-                checkTarget = Target.objects.filter(name=target_name).exists()
+                checkTarget = Target.objects.filter(database=Database.objects.get(name=db_name),name=target_name).exists()
                 if checkTarget:
+                    Target.objects.filter(name=target_name).delete()
+                    db = Database.objects.get(name=db_name)
+                    db.target_count = Target.objects.filter(database=Database.objects.get(name=db_name)).count()
+                    db.save()
                     path = settings.MEDIA_ROOT + '/' + request.data['database'] + '/' + request.data['name']
                     if os.path.exists(path):
                         shutil.rmtree(path)
-                        Target.objects.filter(name=target_name).delete()
-                        return Response({'message': 'Target Deleted'}, status=status.HTTP_200_OK)
-                    return Response({'error': 'Path does not exists'}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({'message': 'Target Deleted'}, status=status.HTTP_200_OK)
                 return Response({'error': 'Target does not exist'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
         return Response({'error': 'bad request'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class RemoveDatabase(APIView):
-    @staticmethod
-    def post(request):
-        if request.method == 'POST':
-            db_name = request.data['name']
-            checkDB = Database.objects.filter(name=db_name).exists()
-            if checkDB:
-                path = settings.MEDIA_ROOT + '/' + request.data['name']
-                if os.path.exists(path):
-                    shutil.rmtree(path)
-                    Database.objects.filter(name=db_name).delete()
-                    return Response({'message': 'Database Deleted'}, status=status.HTTP_200_OK)
-                return Response({'error': 'Path does not exists'}, status=status.HTTP_404_NOT_FOUND)
-            return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
-        return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GetAllDatabases(APIView):
@@ -161,7 +169,7 @@ class GetAllFiles(APIView):
             files = File.objects.values('file')
             if len(files):
                 return Response({'message': files}, status=status.HTTP_200_OK)
-            return Response({'error': 'No targets Available'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'No Files Available'}, status=status.HTTP_404_NOT_FOUND)
         return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
 
 

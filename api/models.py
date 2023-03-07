@@ -7,7 +7,7 @@ class Database(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return self.name + f" id:{self.id}"
 
 
 class Target(models.Model):
@@ -16,7 +16,7 @@ class Target(models.Model):
     createdAt = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return self.name + f" id:{self.id}, {self.database}"
 
 
 class File(models.Model):
@@ -27,4 +27,4 @@ class File(models.Model):
     file = models.FileField()
 
     def __str__(self):
-        return self.name
+        return self.name + f" id:{self.target}, {self.database}"
