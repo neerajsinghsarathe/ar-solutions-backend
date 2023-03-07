@@ -71,6 +71,9 @@ class AddTarget(APIView):
                 checkTarget = Target.objects.filter(name=target_name).exists()
                 if not checkTarget:
                     Target.objects.create(name=target_name, database=Database.objects.get(name=db_name))
+                    db = Database.objects.get(name=db_name)
+                    db.target_count = Target.objects.filter(database=Database.objects.get(name=db_name)).count()
+                    db.save()
                     return Response({'message': 'Target Created'}, status=status.HTTP_201_CREATED)
                 return Response({'error': 'Target already exists'}, status=status.HTTP_409_CONFLICT)
             return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
