@@ -38,10 +38,10 @@ class FileUploadView(APIView):
                             filename = fs.save(file_obj.name, file_obj)
                             file_url = db_name + '/' + fs.url(filename)
                             File.objects.create(name=filename, type=file_type,
-                                                target=Target.objects.get(name=target_name),
+                                                target=Target.objects.get(database=Database.objects.get(name=db_name), name=target_name),
                                                 database=Database.objects.get(name=db_name), file=file_url)
                             return Response({'message': 'File Uploaded'}, status=status.HTTP_201_CREATED)
-                        return Response({'message': file_type + ' File Already Exists'}, status=status.HTTP_201_CREATED)
+                        return Response({'message': file_type + ' File Already Exists'}, status=status.HTTP_409_CONFLICT)
                     return Response({'error': 'Target does not exist'}, status=status.HTTP_404_NOT_FOUND)
                 return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'error': 'Please provide all fields'}, status=status.HTTP_406_NOT_ACCEPTABLE)
@@ -111,7 +111,8 @@ class RemoveTarget(APIView):
             checkDB = Database.objects.filter(name=db_name).exists()
             if checkDB:
                 target_name = request.data['name']
-                checkTarget = Target.objects.filter(database=Database.objects.get(name=db_name),name=target_name).exists()
+                checkTarget = Target.objects.filter(database=Database.objects.get(name=db_name),
+                                                    name=target_name).exists()
                 if checkTarget:
                     Target.objects.filter(name=target_name).delete()
                     db = Database.objects.get(name=db_name)
