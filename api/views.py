@@ -24,24 +24,31 @@ class FileUploadView(APIView):
     @staticmethod
     def post(request):
         if request.method == 'POST':
-            file_obj = request.FILES['file']
+            print(request.data)
             file_type = request.data['type']
             db_name = request.data['database']
             target_name = request.data['target']
+            print(file_type, db_name, target_name)
+            file_obj = request.FILES['file']
 
             if db_name and target_name:
                 if Database.objects.filter(name=db_name).exists():
                     if Target.objects.filter(name=target_name, database=Database.objects.get(name=db_name)).exists():
                         if not File.objects.filter(database=Database.objects.get(name=db_name),
-                                                   target=Target.objects.get(name=target_name,database=Database.objects.get(name=db_name)), type=file_type).exists():
+                                                   target=Target.objects.get(name=target_name,
+                                                                             database=Database.objects.get(
+                                                                                 name=db_name)),
+                                                   type=file_type).exists():
                             fs = CustomFileSystemStorage(db_name, target_name)
                             filename = fs.save(file_obj.name, file_obj)
                             file_url = db_name + '/' + fs.url(filename)
                             File.objects.create(name=filename, type=file_type,
-                                                target=Target.objects.get(database=Database.objects.get(name=db_name), name=target_name),
+                                                target=Target.objects.get(database=Database.objects.get(name=db_name),
+                                                                          name=target_name),
                                                 database=Database.objects.get(name=db_name), file=file_url)
                             return Response({'message': 'File Uploaded'}, status=status.HTTP_201_CREATED)
-                        return Response({'message': file_type + ' File Already Exists'}, status=status.HTTP_409_CONFLICT)
+                        return Response({'message': file_type + ' File Already Exists'},
+                                        status=status.HTTP_409_CONFLICT)
                     return Response({'error': 'Target does not exist'}, status=status.HTTP_404_NOT_FOUND)
                 return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'error': 'Please provide all fields'}, status=status.HTTP_406_NOT_ACCEPTABLE)
@@ -186,6 +193,20 @@ class GetAllFilesByTarget(APIView):
                     if len(targets):
                         return Response({'message': targets}, status=status.HTTP_200_OK)
                     return Response({'error': 'No targets Available'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Empty or Bad Parameter Request'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetDatabaseById(APIView):
+    @staticmethod
+    def get(request):
+        if request.method == 'GET':
+            params = request.query_params.get('db', None)
+            if params is not None:
+                checkDB = Database.objects.filter(id=params).exists()
+                if checkDB:
+                    return Response({'message': Database.objects.filter(id=params).values()}, status=status.HTTP_200_OK)
                 return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'error': 'Empty or Bad Parameter Request'}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
