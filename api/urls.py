@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .views import FileUploadView, AddDatabase, AddTarget, RemoveTarget, RemoveDatabase, GetAllDatabases, GetAllTargets, \
-    GetAllTargetsByDatabase, GetAllFiles, GetAllFilesByTarget, GetDatabaseById
+    GetAllTargetsByDatabase, GetAllFiles, GetFilesByTargetId, GetDatabaseById
 
 urlpatterns = [
     path('addDatabase', AddDatabase.as_view()),
@@ -16,5 +16,5 @@ urlpatterns = [
 
     path('upload', FileUploadView.as_view()),
     path('getAllFiles', GetAllFiles.as_view()),
-    path('getAllFilesByTarget', GetAllFilesByTarget.as_view())
+    path('getAllFilesByTargetId', GetFilesByTargetId.as_view())
 ]

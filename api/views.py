@@ -181,23 +181,6 @@ class GetAllFiles(APIView):
         return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class GetAllFilesByTarget(APIView):
-    @staticmethod
-    def get(request):
-        if request.method == 'GET':
-            params = request.query_params.get('target', None)
-            if params is not None:
-                checkDB = Database.objects.filter(id=params).exists()
-                if checkDB:
-                    targets = Target.objects.filter(database=params).values()
-                    if len(targets):
-                        return Response({'message': targets}, status=status.HTTP_200_OK)
-                    return Response({'error': 'No targets Available'}, status=status.HTTP_404_NOT_FOUND)
-                return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
-            return Response({'error': 'Empty or Bad Parameter Request'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
-
-
 class GetDatabaseById(APIView):
     @staticmethod
     def get(request):
@@ -208,5 +191,19 @@ class GetDatabaseById(APIView):
                 if checkDB:
                     return Response({'message': Database.objects.filter(id=params).values()}, status=status.HTTP_200_OK)
                 return Response({'error': 'Database does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Empty or Bad Parameter Request'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetFilesByTargetId(APIView):
+    @staticmethod
+    def get(request):
+        if request.method == 'GET':
+            params = request.query_params.get('target', None)
+            if params is not None:
+                checkTarget = Target.objects.filter(id=params).exists()
+                if checkTarget:
+                    return Response({'message': File.objects.filter(target=Target.objects.get(id=params)).values()}, status=status.HTTP_200_OK)
+                return Response({'error': 'Target does not exist'}, status=status.HTTP_404_NOT_FOUND)
             return Response({'error': 'Empty or Bad Parameter Request'}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)

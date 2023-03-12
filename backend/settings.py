@@ -30,7 +30,7 @@ CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = (
     'http://localhost:4200',
     'http://127.0.0.1:4200',
-    'http://3.110.157.76:4200'
+    'http://3.110.157.76'
 )
 
 # Application definition
